@@ -3,13 +3,14 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 import math
+from tkinter.tix import MAX
 from controller import Robot, Motor, DistanceSensor
 import os
 
 # Ground Sensor Measurements under this threshold are black
 # measurements above this threshold can be considered white.
 # TODO: Fill this in with a reasonable threshold that separates "line detected" from "no line detected"
-GROUND_SENSOR_THRESHOLD = 0
+GROUND_SENSOR_THRESHOLD = 350
 
 # These are your pose values that you will update by solving the odometry equations
 pose_x = 0
@@ -26,8 +27,9 @@ robot = Robot()
 
 # ePuck Constants
 EPUCK_AXLE_DIAMETER = 0.053 # ePuck's wheels are 53mm apart.
-EPUCK_MAX_WHEEL_SPEED = 0 # TODO: To be filled in with ePuck wheel speed in m/s
-MAX_SPEED = 6.28
+EPUCK_MAX_WHEEL_SPEED = 0.1665 # TODO*: To be filled in with ePuck wheel speed in m/s
+MAX_SPEED = 6.28 # radians/sec = 0.25 m/s
+#convert max speed to rot/s and multiply that by circumference
 
 # get the time step of the current world.
 SIM_TIMESTEP = int(robot.getBasicTimeStep())
@@ -49,8 +51,9 @@ for gs in ground_sensors:
 # Allow sensors to properly initialize
 for i in range(10): robot.step(SIM_TIMESTEP)  
 
-vL = 0 # TODO: Initialize variable for left speed
-vR = 0 # TODO: Initialize variable for right speed
+vL = 2.0 # TODO: Initialize variable for left speed
+vR = 2.0 # TODO: Initialize variable for right speed
+#radians/second 
 
 # Main Control Loop:
 while robot.step(SIM_TIMESTEP) != -1:
@@ -59,7 +62,7 @@ while robot.step(SIM_TIMESTEP) != -1:
     for i, gs in enumerate(ground_sensors):
         gsr[i] = gs.getValue()
 
-    #print(gsr) # TODO: Uncomment to see the ground sensor values!
+    print(gsr) # TODO: Uncomment to see the ground sensor values!
 
     # Hints: 
     #
@@ -78,9 +81,21 @@ while robot.step(SIM_TIMESTEP) != -1:
     
     # TODO: Insert Line Following Code Here                
     
+    # go staight 
+    # sharp turn left 
+    # soft turn right
+    # soft turn left
+    # sharp turn left
+    # finish: close out loop 
+
+    # TODO: code for soft turn left and soft turn right 
+    if ground_sensors[0] < GROUND_SENSOR_THRESHOLD and ground_sensors[1] < GROUND_SENSOR_THRESHOLD: 
+        # this means we turn left 
+        vL = -1*MAX_SPEED
+        vR = MAX_SPEED
+    elif ground_sensors[2] < GROUND_SENSOR_THRESHOLD GROUND_SENSOR_THRESHOLD and ground_sensors[1] < GROUND_SENSOR_THRESHOLD:
     
-    
-    
+    elif ground_sensors[] < 
     
     
     
