@@ -3,13 +3,16 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 import math
+from tkinter.tix import MAX
+
+from cv2 import FarnebackOpticalFlow
 from controller import Robot, Motor, DistanceSensor
 import os
 
 # Ground Sensor Measurements under this threshold are black
 # measurements above this threshold can be considered white.
 # TODO: Fill this in with a reasonable threshold that separates "line detected" from "no line detected"
-GROUND_SENSOR_THRESHOLD = 0
+GROUND_SENSOR_THRESHOLD = 500
 
 # These are your pose values that you will update by solving the odometry equations
 pose_x = 0
@@ -26,8 +29,9 @@ robot = Robot()
 
 # ePuck Constants
 EPUCK_AXLE_DIAMETER = 0.053 # ePuck's wheels are 53mm apart.
-EPUCK_MAX_WHEEL_SPEED = 0 # TODO: To be filled in with ePuck wheel speed in m/s
-MAX_SPEED = 6.28
+EPUCK_MAX_WHEEL_SPEED = 0.1259 # TODO*: To be filled in with ePuck wheel speed in m/s
+MAX_SPEED = 6.28 # radians/sec = 0.25 m/s
+#Calculated this by allowing the robot to drive forward at max speed for 3 seconds. Then, recorded the translation and divided by 3 to get 0.1259 m/s.
 
 # get the time step of the current world.
 SIM_TIMESTEP = int(robot.getBasicTimeStep())
@@ -49,8 +53,15 @@ for gs in ground_sensors:
 # Allow sensors to properly initialize
 for i in range(10): robot.step(SIM_TIMESTEP)  
 
-vL = 0 # TODO: Initialize variable for left speed
-vR = 0 # TODO: Initialize variable for right speed
+vL = 2.0 # TODO: Initialize variable for left speed
+vR = 2.0 # TODO: Initialize variable for right speed
+#radians/second 
+
+#flag
+encountered_line = False
+turningLeft = False
+turningRight = False
+straight = False
 
 # Main Control Loop:
 while robot.step(SIM_TIMESTEP) != -1:
@@ -59,7 +70,7 @@ while robot.step(SIM_TIMESTEP) != -1:
     for i, gs in enumerate(ground_sensors):
         gsr[i] = gs.getValue()
 
-    #print(gsr) # TODO: Uncomment to see the ground sensor values!
+    print(gsr) # TODO: Uncomment to see the ground sensor values!
 
     # Hints: 
     #
@@ -76,16 +87,94 @@ while robot.step(SIM_TIMESTEP) != -1:
     # and test the robustness of your approach.
     #
     
-    # TODO: Insert Line Following Code Here                
+    # TODO: Insert Line Following Code Here  : state: follow_line      
+    # a) If the center ground sensor detects the line, the robot should drive forward.
+    # ONLY MIDDLE SENSOR DETECTING 
+    if gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
+        vL = 0.75*MAX_SPEED
+        vR = 0.75*MAX_SPEED
+        turningLeft = False
+        turningRight = False
+    # at the start line, move forward.
+    # ALL SENSORS DETECTING 
+    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
+        vL = MAX_SPEED
+        vR = MAX_SPEED
     
+    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
+        vL = -.25*MAX_SPEED
+        vR = 0.75*MAX_SPEED
     
-    
-    
-    
-    
+    #LEFT SENSOR DETECTING
+    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] > GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
+        vL = -.25*MAX_SPEED
+        vR = 0.75*MAX_SPEED
+
+    elif gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[1] > GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
+        vL = 0.75*MAX_SPEED
+        vR = -.25*MAX_SPEED
+        
+    elif gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
+        vL = 0.75*MAX_SPEED
+        vR = -.25*MAX_SPEED
+    # d) Otherwise, if none of the ground sensors detect the line, rotate counterclockwise in place. (This
+    # will help the robot re-find the line when it overshoots on corners!)     
+    #ALL SENSORS NOT DETECTING
+    else: 
+        vL = -1 *MAX_SPEED
+        vR =  MAX_SPEED
+
     
     # TODO: Call update_odometry Here
+    # pose_x, pose_y, pose_theta
+    time = SIM_TIMESTEP/1000 # time step in seconds
+
+    d = 52 # axle length in milimeters 
+    r = 20.5 # wheel raius in mm
+
+    # phi_dot is angular velocity in rad/sec
+    # phi_dot*r = linear speed 
+    phi_left = vL
+    phi_right = vR
+
+    d = 52 # axle length in milimeters 
+    r = 20.5 # wheel raius in mm
+    #diameter 71mm
+    #height 50mm
+    #wheel radius 20.5mm
+    #axle length 52mm
     
+    #derivative or omega_dot
+    omega_right = (phi_right*r)/d
+    omega_left = (phi_left*r)/d
+
+    #These are theta dots
+    theta_right = (omega_right*d)/r
+    theta_left = (omega_left*d)/r
+
+    # theta_dot = phi_right/d - phi_left/d
+    # theta_delta = theta_dot*time
+
+    x_dot_r = theta_right*(r/2) + theta_left*(r/2)
+    y_dot_r = 0
+
+    omega_dot_r = theta_right*r/d - theta_left*r/d
+
+
+    # Now convert to {i}
+    theta_dot_i = omega_dot_r
+    x_dot_i = math.cos(theta_dot_i)*x_dot_r
+    y_dot_i = math.sin(theta_dot_i)*x_dot_r
+
+    pose_x += x_dot_i*time
+    pose_y += y_dot_i*time
+    pose_theta += theta_dot_i*time
+
+    # time=delta t in 3.35
+    # x_dot is max speed and y_dot is 0 if moving on x axis, opposite for y axis
+    # get the theta for each time step using 3.23 & 3.24
+
+
     # Hints:
     #
     # 1) Divide vL/vR by MAX_SPEED to normalize, then multiply with
@@ -105,6 +194,17 @@ while robot.step(SIM_TIMESTEP) != -1:
 
     
     # TODO: Insert Loop Closure Code Here
+    is_ground = gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD
+
+    if(encountered_line and is_ground): 
+        # reset
+        pose_theta = 0.0
+        pose_x = 0.0
+        pose_y = 0.0
+    elif (is_ground and not encountered_line): 
+        encountered_line = True
+    else: 
+        encountered_line = False
     
     # Hints:
     #
