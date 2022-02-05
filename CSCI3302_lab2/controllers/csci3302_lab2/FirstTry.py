@@ -61,7 +61,7 @@ vR = 2.0 # TODO: Initialize variable for right speed
 encountered_line = False
 turningLeft = False
 turningRight = False
-straight = False
+straight = 0
 
 # Main Control Loop:
 while robot.step(SIM_TIMESTEP) != -1:
@@ -88,89 +88,62 @@ while robot.step(SIM_TIMESTEP) != -1:
     #
     
     # TODO: Insert Line Following Code Here  : state: follow_line      
-    # a) If the center ground sensor detects the line, the robot should drive forward.
-    # ONLY MIDDLE SENSOR DETECTING 
-    if gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
-        vL = 0.75*MAX_SPEED
-        vR = 0.75*MAX_SPEED
-        turningLeft = False
-        turningRight = False
-    # at the start line, move forward.
-    # ALL SENSORS DETECTING 
-    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
-        vL = MAX_SPEED
-        vR = MAX_SPEED
-    
-    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
-        vL = -.25*MAX_SPEED
-        vR = 0.75*MAX_SPEED
-    
-    #LEFT SENSOR DETECTING
-    elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] > GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
-        vL = -.25*MAX_SPEED
-        vR = 0.75*MAX_SPEED
 
-    elif gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[1] > GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
-        vL = 0.75*MAX_SPEED
-        vR = -.25*MAX_SPEED
-        
-    elif gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
-        vL = 0.75*MAX_SPEED
-        vR = -.25*MAX_SPEED
-    # d) Otherwise, if none of the ground sensors detect the line, rotate counterclockwise in place. (This
-    # will help the robot re-find the line when it overshoots on corners!)     
-    #ALL SENSORS NOT DETECTING
+    if turningLeft: 
+        print("turning left" + str(straight))
+        if straight > 2: 
+            straight = 0
+            vL = -1*MAX_SPEED
+            vR = MAX_SPEED
+        else: 
+            straight += 1
+            vL = MAX_SPEED
+            vR = MAX_SPEED
+    elif turningRight: 
+        print("turning right" + str(turningRight))
+        if straight > 2: 
+            straight = 0
+            vL = MAX_SPEED
+            vR = -1*MAX_SPEED
+        else: 
+            straight += 1
+            vL = MAX_SPEED
+            vR = MAX_SPEED
     else: 
-        vL = -1 *MAX_SPEED
-        vR =  MAX_SPEED
+        # a) If the center ground sensor detects the line, the robot should drive forward.
+        if gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD:
+            vL = MAX_SPEED
+            vR = MAX_SPEED
+            turningLeft = False
+            turningRight = False
+        # b) If the left ground sensor detects the line, the robot should rotate counterclockwise in place.
+        elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] > GROUND_SENSOR_THRESHOLD: 
+            vL = -1*MAX_SPEED
+            vR = MAX_SPEED
+            turningLeft = True
+            turningRight = False
 
+        # c) If the right ground sensor detects the line, the robot should rotate clockwise in place.
+        elif gsr[2] < GROUND_SENSOR_THRESHOLD and gsr[0] > GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD: 
+            vL = MAX_SPEED
+            vR = -1*MAX_SPEED
+            turningRight = True
+            turningLeft= False
+        # at the start line, move forward.
+        elif gsr[0] < GROUND_SENSOR_THRESHOLD and gsr[1] < GROUND_SENSOR_THRESHOLD and gsr[2] < GROUND_SENSOR_THRESHOLD:
+            vL = MAX_SPEED
+            vR = MAX_SPEED
+            
+        # d) Otherwise, if none of the ground sensors detect the line, rotate counterclockwise in place. (This
+        # will help the robot re-find the line when it overshoots on corners!)     
+        else: 
+            vL = -1 *MAX_SPEED
+            vR =  MAX_SPEED
+    
     
     # TODO: Call update_odometry Here
     # pose_x, pose_y, pose_theta
     time = SIM_TIMESTEP/1000 # time step in seconds
-<<<<<<< HEAD
-
-    d = 52 # axle length in milimeters 
-    r = 20.5 # wheel raius in mm
-
-    # phi_dot is angular velocity in rad/sec
-    # phi_dot*r = linear speed 
-    phi_left = vL
-    phi_right = vR
-
-    d = 52 # axle length in milimeters 
-    r = 20.5 # wheel raius in mm
-    #diameter 71mm
-    #height 50mm
-    #wheel radius 20.5mm
-    #axle length 52mm
-    
-    #derivative or omega_dot
-    omega_right = (phi_right*r)/d
-    omega_left = (phi_left*r)/d
-
-    #These are theta dots
-    theta_right = (omega_right*d)/r
-    theta_left = (omega_left*d)/r
-
-    # theta_dot = phi_right/d - phi_left/d
-    # theta_delta = theta_dot*time
-
-    x_dot_r = theta_right*(r/2) + theta_left*(r/2)
-    y_dot_r = 0
-
-    omega_dot_r = theta_right*r/d - theta_left*r/d
-
-
-    # Now convert to {i}
-    theta_dot_i = omega_dot_r
-    x_dot_i = math.cos(theta_dot_i)*x_dot_r
-    y_dot_i = math.sin(theta_dot_i)*x_dot_r
-
-    pose_x += x_dot_i*time
-    pose_y += y_dot_i*time
-    pose_theta += theta_dot_i*time
-=======
     
     phi_left = vL*time
     phi_right = vR*time
@@ -183,7 +156,7 @@ while robot.step(SIM_TIMESTEP) != -1:
     #wheel radius 20.5mm
     #axle length 52mm
     
-    theta_dot = r*phi_right/d - r*phi_left/d
+    theta_dot = r*phi_left/d + r*phi_right/d
     theta_delta = theta_dot*time
 
     x_dot_r = r*phi_left/2 + r*phi_right/2
@@ -194,7 +167,6 @@ while robot.step(SIM_TIMESTEP) != -1:
     pose_x += x_dot_i*time
     pose_y += y_dot_i*time
     pose_theta += theta_delta
->>>>>>> 30f3c95fe00098eb6f71304414f2bbefc4c16a93
 
     # time=delta t in 3.35
     # x_dot is max speed and y_dot is 0 if moving on x axis, opposite for y axis
